@@ -36,23 +36,25 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    /** Pesan jika akun sedang diblokir; null jika tidak. */
+    public function blockedReason(): ?string
+    {
+        if (!$this->is_blocked) return null;
+        $why = BlockRecord::where('user_id', $this->id)->where('active', true)->latest('id')->value('reason');
+        return 'Akun diblokir: ' . ($why ?? '-');
+    }
+
     /** Alasan user TIDAK boleh booking/check-in (null = boleh). */
     public function entryDeniedReason(): ?string
     {
-        if ($this->is_blocked) {
-            return $this->blockedMessage();
+        if ($why = $this->blockedReason()) {
+            return $why;
         }
         $m = $this->membership;
         if (!$m) return 'Member belum punya paket';
         if ($m->isFrozen()) return 'Membership sedang dibekukan';
         if (!$m->isActive()) return 'Membership sudah berakhir';
         return null;
-    }
-
-    public function blockedMessage(): string
-    {
-        $why = BlockRecord::where('user_id', $this->id)->where('active', true)->latest('id')->value('reason');
-        return 'Akun diblokir: ' . ($why ?? '-');
     }
 
     public function membership(): HasOne

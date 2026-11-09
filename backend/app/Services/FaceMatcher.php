@@ -32,4 +32,14 @@ class FaceMatcher
         // TODO(tim wajah): bandingkan embedding foto dengan $template->embedding.
         return null;
     }
+
+    /**
+     * Kenali member dari foto kamera (dipakai layar Scan admin).
+     * Kembalikan User yang cocok, atau null bila tidak ada / belum diimplementasikan.
+     */
+    public function identify(UploadedFile $photo): ?\App\Models\User
+    {
+        // TODO(tim wajah): cari FaceTemplate terdekat dari embedding foto.
+        return null;
+    }
 }
