@@ -257,6 +257,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _name = TextEditingController();
   final _pw = TextEditingController();
+  bool _busy = false;
 
   @override
   void dispose() {
@@ -265,8 +266,13 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    final err = context.read<AppState>().login(_name.text, _pw.text);
+  Future<void> _submit() async {
+    if (_busy) return;
+    final app = context.read<AppState>();
+    setState(() => _busy = true);
+    final err = await app.login(_name.text, _pw.text);
+    if (!mounted) return;
+    setState(() => _busy = false);
     if (err != null) toast(context, err);
   }
 
@@ -312,7 +318,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         const SizedBox(height: 36),
-        PrimaryButton('Masuk', onPressed: _submit),
+        PrimaryButton(_busy ? 'Memproses...' : 'Masuk', onPressed: _busy ? null : _submit),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -332,7 +338,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 18),
         Text(
-          'Demo: Naufal Badu / Gymku123 (member) • Tamu Baru / Gymku123 (belum member) • admin / admin123',
+          'Demo: Naufal Badu / Gymku123 (member) • admin / admin123',
           textAlign: TextAlign.center,
           style: AppText.body(10.5, color: Colors.black38),
         ),
@@ -352,6 +358,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _email = TextEditingController();
   final _pw = TextEditingController();
   final _confirm = TextEditingController();
+  bool _busy = false;
 
   @override
   void dispose() {
@@ -362,13 +369,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    final err = context.read<AppState>().register(
+  Future<void> _submit() async {
+    if (_busy) return;
+    final app = context.read<AppState>();
+    setState(() => _busy = true);
+    final err = await app.register(
       _name.text,
       _email.text,
       _pw.text,
       _confirm.text,
     );
+    if (!mounted) return;
+    setState(() => _busy = false);
     if (err != null) toast(context, err);
   }
 
@@ -394,7 +406,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           obscure: true,
         ),
         const SizedBox(height: 26),
-        PrimaryButton('Daftar', onPressed: _submit),
+        PrimaryButton(_busy ? 'Memproses...' : 'Daftar', onPressed: _busy ? null : _submit),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,

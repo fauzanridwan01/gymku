@@ -10,9 +10,12 @@ import 'package:aplikasiku/core/theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID');
+  // Pulihkan sesi login dari token tersimpan sebelum layar pertama tampil.
+  final appState = AppState();
+  await appState.restoreSession();
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AppState(),
+    ChangeNotifierProvider.value(
+      value: appState,
       child: const GymkuApp(),
     ),
   );
