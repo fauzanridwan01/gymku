@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 
@@ -430,8 +429,9 @@ class AppState extends ChangeNotifier {
     if (goal == 0) return 0;
     final ws = startOfWeek(today());
     var streak = 0;
-    if (visitsBetween(ws, DateTime(ws.year, ws.month, ws.day + 7)) >= goal)
+    if (visitsBetween(ws, DateTime(ws.year, ws.month, ws.day + 7)) >= goal) {
       streak++;
+    }
     for (var i = 1; i < 260; i++) {
       final a = DateTime(ws.year, ws.month, ws.day - 7 * i);
       final b = DateTime(a.year, a.month, a.day + 7);
@@ -590,8 +590,9 @@ class AppState extends ChangeNotifier {
   String? requestFreezeMembership(DateTime start, int days, String reason) {
     final m = membership;
     if (m == null || !m.isActive) return 'Membership tidak aktif';
-    if (m.currentFreeze != null)
+    if (m.currentFreeze != null) {
       return 'Membership sudah dibekukan / dijadwalkan beku';
+    }
     if (pendingFreezeRequest != null) {
       return 'Masih ada permintaan yang menunggu persetujuan admin';
     }
@@ -599,8 +600,9 @@ class AppState extends ChangeNotifier {
     if (days > m.freezeDaysAvailable) {
       return 'Sisa jatah beku hanya ${m.freezeDaysAvailable} hari';
     }
-    if (dateOnly(start).isBefore(today()))
+    if (dateOnly(start).isBefore(today())) {
       return 'Tanggal mulai tidak boleh di masa lalu';
+    }
     if (reason.trim().isEmpty) return 'Alasan pembekuan wajib diisi';
     freezeRequests.add(
       FreezeRequest(
@@ -906,8 +908,9 @@ class AppState extends ChangeNotifier {
         final day = t0.subtract(Duration(days: d));
         if (s.joinedToday) break;
         if (r.nextDouble() > s.freq) continue;
-        if (f != null && !day.isBefore(f.start) && !day.isAfter(f.end))
+        if (f != null && !day.isBefore(f.start) && !day.isAfter(f.end)) {
           continue;
+        }
         var hour = r.nextBool() ? 17 + r.nextInt(3) : 6 + r.nextInt(15);
         var minute = r.nextInt(60);
         if (d == 0) {
@@ -1181,8 +1184,9 @@ class AppState extends ChangeNotifier {
 
   /// Alasan member TIDAK boleh masuk (null = boleh).
   String? entryDeniedReason(AppUser u) {
-    if (u.blocked)
+    if (u.blocked) {
       return 'Akun diblokir: ${activeBlockOf(u.id)?.reason ?? '-'}';
+    }
     final m = _memberships[u.id];
     if (m == null) return 'Member belum punya paket';
     if (m.isFrozen) return 'Membership sedang dibekukan';
