@@ -62,7 +62,7 @@ class _AdminPackagesScreenState extends State<AdminPackagesScreen> {
                     const Spacer(),
                     Switch(
                       value: p.enabled,
-                      activeColor: AppColors.tealDark,
+                      activeThumbColor: AppColors.tealDark,
                       onChanged: (v) {
                         final err = context.read<AppState>().setPlanEnabled(p.id, v);
                         if (err != null) toast(context, err);
@@ -213,7 +213,7 @@ class _AdminPackagesScreenState extends State<AdminPackagesScreen> {
                 if (p.isScheduled)
                   Switch(
                     value: p.enabled,
-                    activeColor: AppColors.tealDark,
+                    activeThumbColor: AppColors.tealDark,
                     onChanged: (v) => context.read<AppState>().setPromoEnabled(p.id, v),
                   ),
                 const Spacer(),
@@ -325,7 +325,7 @@ class _PromoFormScreenState extends State<PromoFormScreen> {
   late final _quota = TextEditingController(
       text: widget.editing == null ? '' : '${widget.editing!.quota}');
   late PromoType _type = widget.editing?.type ?? PromoType.percent;
-  late Set<String> _plans = {...?widget.editing?.planIds};
+  late final Set<String> _plans = {...?widget.editing?.planIds};
   late bool _renewalOnly = widget.editing?.renewalOnly ?? false;
   late DateTime _start = widget.editing?.start ?? today();
   late DateTime _end = widget.editing?.end ?? today().add(const Duration(days: 30));

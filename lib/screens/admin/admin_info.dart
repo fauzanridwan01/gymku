@@ -568,7 +568,7 @@ class _InfoFormScreenState extends State<InfoFormScreen> {
                     ),
                     Switch(
                       value: _banner,
-                      activeColor: AppColors.tealDark,
+                      activeThumbColor: AppColors.tealDark,
                       onChanged: (v) => setState(() => _banner = v),
                     ),
                   ]),
