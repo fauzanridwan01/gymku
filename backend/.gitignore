@@ -4,3 +4,4 @@
 /storage/*.key
 /storage/logs
 /public/storage
+.phpunit.result.cache

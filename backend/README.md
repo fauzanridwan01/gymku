@@ -30,7 +30,8 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Edit `backend/.env` (zona waktu penting agar "hari ini" dan masa aktif sesuai WIB):
+Edit `backend/.env` (zona waktu penting agar "hari ini" dan masa aktif sesuai WIB; sudah ada di `.env.example`).
+`APP_TIMEZONE` dibaca oleh `config/app.php`, dan koneksi PostgreSQL otomatis memakai zona yang sama (`DB_TIMEZONE`):
 
 ```
 APP_TIMEZONE=Asia/Jakarta
@@ -71,7 +72,7 @@ Ulang dari nol: `php artisan migrate:fresh --seed`.
 - HP asli (satu Wi-Fi): `http://<IP-laptop>:8000/api`
 - Android memblokir HTTP polos: tambahkan `android:usesCleartextTraffic="true"` pada `<application>` di `android/app/src/main/AndroidManifest.xml` (hanya untuk pengembangan).
 
-Autentikasi: kirim header `Authorization: Bearer <token>` (token dari `/auth/login`).
+Autentikasi (dan selalu kirim `Accept: application/json`): kirim header `Authorization: Bearer <token>` (token dari `/auth/login`).
 
 ## Endpoint (tahap ini)
 
@@ -121,12 +122,8 @@ harga dihitung di server.
 | POST | `/api/bookings` | `{class_id}`; ditolak jika diblokir/tidak aktif/dibekukan, kelas sudah mulai, penuh, atau tanggalnya di masa pembekuan |
 | DELETE | `/api/bookings/{class_id}` | batal, maksimal 1 jam sebelum kelas |
 | GET | `/api/checkins` | riwayat + kunjungan & hari aktif bulan ini |
-| POST | `/api/checkins` | check-in mandiri (opsional `photo` untuk pencocokan wajah via `FaceMatcher`); jeda 2 menit |
+| POST | `/api/checkins` | check-in mandiri: `photo` **wajib** dan wajah harus sudah terdaftar (`/api/me/face`); dicocokkan via `FaceMatcher`; jeda 2 menit |
 | POST | `/api/admin/checkins` | admin mencatat check-in: `{user_id, method: face|manual}` |
-
-> **Zona waktu PostgreSQL.** Agar jam kelas tidak bergeser, samakan zona waktu database dengan aplikasi (sekali saja, di pgAdmin → Query Tool pada database `gymku`):
-> `ALTER DATABASE gymku SET timezone TO 'Asia/Jakarta';`
-> lalu jalankan ulang `php artisan migrate:fresh --seed` (atau restart koneksi).
 
 ## Tempat algoritma wajah (untuk teman satu tim)
 Ubah isi dua method di `app/Services/FaceMatcher.php` (`embed()` dan `match()`).
@@ -134,6 +131,14 @@ Tabel `face_templates` (kolom `embedding` jsonb) dan endpoint `/api/me/face` sud
 
 ## Pembayaran QRIS
 Disimulasikan (tanpa payment gateway) lewat `POST /api/orders/{code}/simulate-pay`.
+Endpoint ini hanya aktif saat `APP_ENV` = `local`/`testing`, atau jika `GYMKU_SIMULATE_PAY=true`.
+Di server sungguhan biarkan mati dan ganti dengan webhook payment gateway (verifikasi tanda tangan).
+
+## Keamanan singkat
+- Login/register dibatasi 10 percobaan per menit; token berlaku 30 hari (`SANCTUM_EXPIRATION`, menit).
+- Member yang diblokir langsung ditolak di semua endpoint (kecuali logout), walau token lamanya masih ada.
+- Semua error di `/api/*` selalu berbentuk JSON, termasuk 401 tanpa header `Accept`.
+- Login: isian berisi `@` dianggap email, selain itu nama; tidak membedakan huruf besar-kecil.
 
 ## Peta tabel
 `users` · `plans` · `promos` + `promo_plan` · `promo_codes` · `memberships` · `freezes` ·

@@ -15,10 +15,12 @@ class AuthController extends Controller
     public function register(Request $r): JsonResponse
     {
         $data = $r->validate([
-            'name' => ['required', 'string', 'max:100', 'unique:users,name'],
-            'email' => ['required', 'email', 'max:150', 'unique:users,email'],
+            'name' => ['required', 'string', 'max:100', $this->uniqueCi('name', 'Nama sudah dipakai.')],
+            'email' => ['required', 'email', 'max:150', $this->uniqueCi('email', 'Email sudah terdaftar.')],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
         ]);
+        $data['name'] = trim($data['name']);
+        $data['email'] = mb_strtolower(trim($data['email']));
 
         $user = User::create($data + [
             'role' => 'member',
@@ -37,7 +39,10 @@ class AuthController extends Controller
     {
         $r->validate(['login' => 'required|string', 'password' => 'required|string']);
 
-        $user = User::where('email', $r->login)->orWhere('name', $r->login)->first();
+        // Berisi "@" = email, selain itu = nama. Dipisah agar nama yang menyerupai email
+        // tidak bisa bentrok dengan akun lain. Tidak membedakan huruf besar-kecil.
+        $login = mb_strtolower(trim($r->login));
+        $user = User::whereRaw(str_contains($login, '@') ? 'LOWER(email) = ?' : 'LOWER(name) = ?', [$login])->first();
         if (!$user || !Hash::check($r->password, $user->password)) {
             throw ValidationException::withMessages(['login' => 'Nama/email atau kata sandi salah.']);
         }
@@ -69,13 +74,30 @@ class AuthController extends Controller
     public function update(Request $r): JsonResponse
     {
         $data = $r->validate([
-            'name' => ['sometimes', 'string', 'max:100', 'unique:users,name,' . $r->user()->id],
+            'name' => ['sometimes', 'string', 'max:100', $this->uniqueCi('name', 'Nama sudah dipakai.', $r->user()->id)],
+            'email' => ['sometimes', 'email', 'max:150', $this->uniqueCi('email', 'Email sudah terdaftar.', $r->user()->id)],
             'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
             'gender' => ['sometimes', 'nullable', 'in:Laki-laki,Perempuan'],
             'birth_date' => ['sometimes', 'nullable', 'date', 'before:today'],
         ]);
+        if (isset($data['name'])) $data['name'] = trim($data['name']);
+        if (isset($data['email'])) $data['email'] = mb_strtolower(trim($data['email']));
         $r->user()->update($data);
         return response()->json(['user' => $r->user()->fresh()->toApi()]);
+    }
+
+    /** Aturan unik yang tidak membedakan huruf besar-kecil (cocok dengan indeks LOWER() di database). */
+    private function uniqueCi(string $column, string $message, ?int $ignoreId = null): \Closure
+    {
+        return function (string $attr, mixed $value, \Closure $fail) use ($column, $message, $ignoreId) {
+            $q = User::whereRaw("LOWER($column) = ?", [mb_strtolower(trim((string) $value))]);
+            if ($ignoreId) {
+                $q->where('id', '!=', $ignoreId);
+            }
+            if ($q->exists()) {
+                $fail($message);
+            }
+        };
     }
 
     public function changePassword(Request $r): JsonResponse

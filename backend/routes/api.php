@@ -14,15 +14,19 @@ use App\Http\Controllers\Api\FaceController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PlanController;
 use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureNotBlocked;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/ping', fn () => ['ok' => true, 'app' => 'GYMKU']);
 
-Route::post('/auth/register', [AuthController::class, 'register']);
-Route::post('/auth/login', [AuthController::class, 'login']);
+// Dibatasi agar tidak bisa ditebak berulang-ulang (brute force).
+Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
+Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/auth/logout', [AuthController::class, 'logout']);
+// Keluar tetap boleh walau akun diblokir.
+Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+
+Route::middleware(['auth:sanctum', EnsureNotBlocked::class])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/me', [AuthController::class, 'update']);
     Route::put('/me/password', [AuthController::class, 'changePassword']);

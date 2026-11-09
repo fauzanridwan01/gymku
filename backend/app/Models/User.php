@@ -40,14 +40,19 @@ class User extends Authenticatable
     public function entryDeniedReason(): ?string
     {
         if ($this->is_blocked) {
-            $why = BlockRecord::where('user_id', $this->id)->where('active', true)->latest('id')->value('reason');
-            return 'Akun diblokir: ' . ($why ?? '-');
+            return $this->blockedMessage();
         }
         $m = $this->membership;
         if (!$m) return 'Member belum punya paket';
         if ($m->isFrozen()) return 'Membership sedang dibekukan';
         if (!$m->isActive()) return 'Membership sudah berakhir';
         return null;
+    }
+
+    public function blockedMessage(): string
+    {
+        $why = BlockRecord::where('user_id', $this->id)->where('active', true)->latest('id')->value('reason');
+        return 'Akun diblokir: ' . ($why ?? '-');
     }
 
     public function membership(): HasOne
