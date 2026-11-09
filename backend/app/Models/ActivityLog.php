@@ -13,4 +13,15 @@ class ActivityLog extends Model
     {
         return ['created_at' => 'datetime'];
     }
+
+    public function toApi(): array
+    {
+        return [
+            'id' => $this->id,
+            'kind' => $this->kind,
+            'text' => $this->text,
+            'detail' => $this->detail,
+            'at' => $this->created_at?->toIso8601String(),
+        ];
+    }
 }

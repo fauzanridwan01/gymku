@@ -70,6 +70,7 @@ class AuthController extends Controller
     {
         $data = $r->validate([
             'name' => ['sometimes', 'string', 'max:100', 'unique:users,name,' . $r->user()->id],
+            'email' => ['sometimes', 'email', 'max:150', 'unique:users,email,' . $r->user()->id],
             'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
             'gender' => ['sometimes', 'nullable', 'in:Laki-laki,Perempuan'],
             'birth_date' => ['sometimes', 'nullable', 'date', 'before:today'],

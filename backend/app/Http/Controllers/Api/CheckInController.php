@@ -28,8 +28,8 @@ class CheckInController extends Controller
     }
 
     /**
-     * Check-in mandiri. Jika `photo` dikirim dan wajah sudah terdaftar, dicocokkan
-     * lewat FaceMatcher (algoritma tim lain; selama belum ada, pencocokan dilewati).
+     * Check-in mandiri: `photo` wajib dan wajah harus sudah terdaftar. Foto dicocokkan
+     * lewat FaceMatcher (algoritma tim lain; selama belum ada, skor null = dilewati).
      */
     public function store(Request $r, FaceMatcher $matcher): JsonResponse
     {
@@ -39,10 +39,12 @@ class CheckInController extends Controller
         if ($why = $user->entryDeniedReason()) {
             abort(403, $why);
         }
-        if ($r->hasFile('photo') && $user->faceTemplate) {
-            $score = $matcher->match($r->file('photo'), $user->faceTemplate);
-            abort_if($score !== null && $score < FaceMatcher::THRESHOLD, 403, 'Wajah tidak cocok');
-        }
+        // Tanpa foto, siapa pun bisa "check-in" dari mana saja: foto dan wajah terdaftar wajib.
+        abort_unless($r->hasFile('photo'), 422, 'Foto wajah wajib untuk check-in');
+        abort_unless($user->faceTemplate, 422, 'Daftarkan wajah dulu sebelum check-in');
+
+        $score = $matcher->match($r->file('photo'), $user->faceTemplate);
+        abort_if($score !== null && $score < FaceMatcher::THRESHOLD, 403, 'Wajah tidak cocok');
         abort_if(
             CheckIn::where('user_id', $user->id)->where('checked_in_at', '>', now()->subMinutes(2))->exists(),
             409, 'Kamu baru saja check-in'

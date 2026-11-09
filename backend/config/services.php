@@ -28,6 +28,11 @@ return [
         'key' => env('RESEND_KEY'),
     ],
 
+    'gymku' => [
+        // Pembayaran QRIS simulasi hanya aktif di local/testing, kecuali dinyalakan eksplisit.
+        'simulate_pay' => (bool) env('GYMKU_SIMULATE_PAY', in_array(env('APP_ENV', 'production'), ['local', 'testing'], true)),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

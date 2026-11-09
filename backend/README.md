@@ -58,6 +58,19 @@ php artisan test                   # opsional
 
 Ulang dari nol: `php artisan migrate:fresh --seed`.
 
+## Menjalankan aplikasi Flutter dengan backend
+
+Backend harus sudah jalan (`php artisan serve --host=0.0.0.0`). Lalu dari root proyek:
+
+```bash
+flutter pub get
+flutter run --dart-define=API_URL=http://10.0.2.2:8000/api      # emulator Android
+flutter run --dart-define=API_URL=http://<IP-laptop>:8000/api   # HP asli, satu Wi-Fi
+```
+
+Tanpa `--dart-define=API_URL=...` aplikasi berjalan dalam **mode demo** (data di memori, tanpa server).
+Di VS Code, taruh argumennya di `.vscode/launch.json` pada `"args"`.
+
 ## Akun contoh (dari seeder)
 
 | Peran  | Login                                  | Kata sandi |
@@ -128,8 +141,35 @@ harga dihitung di server.
 > `ALTER DATABASE gymku SET timezone TO 'Asia/Jakarta';`
 > lalu jalankan ulang `php artisan migrate:fresh --seed` (atau restart koneksi).
 
+### Target dan pembekuan
+
+| Metode | Path | Keterangan |
+|---|---|---|
+| GET | `/api/targets` | target + progres, `week_dots` (Sen–Min), streak mingguan sekarang & terbaik |
+| POST | `/api/targets` | `{name, period: weekly|monthly, count, days?, reminder?, reminder_time?}`; hanya member aktif, satu target per periode |
+| DELETE | `/api/targets/{id}` | |
+| GET | `/api/membership/freeze` | status keanggotaan + permintaan yang menunggu |
+| GET | `/api/membership/freeze-requests` | riwayat permintaan saya |
+| POST | `/api/membership/freeze-requests` | `{start: YYYY-MM-DD, days, reason}`; jatah beku maks 30 hari |
+| POST | `/api/membership/unfreeze-requests` | minta buka bekuan lebih awal |
+| GET | `/api/admin/freeze-requests?status=&type=` | daftar permintaan |
+| POST | `/api/admin/freeze-requests/{id}/decision` | `{approve: bool, note?}`; setuju beku → tanggal berakhir mundur & booking di masa beku dibatalkan |
+
+### Admin: member, blokir, laporan
+
+| Metode | Path | Keterangan |
+|---|---|---|
+| GET | `/api/admin/members?q=&status=&gender=&limit=` | daftar/cari member + status (`active, expiring, expired, frozen, blocked, none`) |
+| GET | `/api/admin/members/{id}` | detail: keanggotaan, check-in, pembayaran, blokir aktif, permintaan beku |
+| POST | `/api/admin/members/{id}/block` · `.../unblock` | `{reason}` / `{note?}`; blokir mengeluarkan semua token member |
+| GET | `/api/admin/blocks` | `{active[], reopened[]}` |
+| GET | `/api/admin/dashboard` | angka dashboard: member aktif, diblokir, baru hari ini, akan berakhir, kunjungan, pendapatan 30 hari |
+| GET | `/api/admin/reports?month=YYYY-MM` | kunjungan & pendapatan bulanan, per minggu, jam ramai, member tidak aktif |
+| GET | `/api/admin/logs?kind=&limit=` · `/api/admin/transactions` | log aktivitas, semua pembayaran |
+| POST | `/api/admin/scan` | kirim `photo`; mengenali member via `FaceMatcher::identify()` (belum diisi → 404) |
+
 ## Tempat algoritma wajah (untuk teman satu tim)
-Ubah isi dua method di `app/Services/FaceMatcher.php` (`embed()` dan `match()`).
+Ubah isi tiga method di `app/Services/FaceMatcher.php`: `embed()`, `match()` (check-in mandiri), dan `identify()` (layar Scan admin).
 Tabel `face_templates` (kolom `embedding` jsonb) dan endpoint `/api/me/face` sudah siap.
 
 ## Pembayaran QRIS
@@ -141,6 +181,5 @@ Disimulasikan (tanpa payment gateway) lewat `POST /api/orders/{code}/simulate-pa
 `announcements` · `block_records` · `activity_logs` · `face_templates`
 (+ `personal_access_tokens` dari Sanctum).
 
-## Belum dibuat (tahap berikutnya)
-Target, pembekuan, dan aksi admin lain
-(sesuai penanda `// API:` di `lib/core/app_state.dart`), lalu menyambungkan Flutter ke API.
+## Belum dibuat
+Menyambungkan aplikasi Flutter ke API ini (mengganti bagian bertanda `// API:` di `lib/core/app_state.dart`).

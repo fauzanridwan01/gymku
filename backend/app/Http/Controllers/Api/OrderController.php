@@ -40,25 +40,35 @@ class OrderController extends Controller
         $renewal = $user->membership?->isActive() ?? false;
         $q = Pricing::quote($plan, $renewal, $d['promo_code'] ?? null);
 
-        // Pesanan lama yang belum dibayar dibatalkan; satu pesanan aktif per user.
-        Transaction::where('user_id', $user->id)->where('status', 'pending')->update(['status' => 'cancelled']);
+        $t = DB::transaction(function () use ($user, $plan, $q) {
+            // Pesanan lama yang belum dibayar dibatalkan; satu pesanan aktif per user.
+            Transaction::where('user_id', $user->id)->where('status', 'pending')->update(['status' => 'cancelled']);
 
-        $t = Transaction::create([
-            'code' => 'TMP-' . Str::random(12),
-            'user_id' => $user->id,
-            'plan_id' => $plan->id,
-            'plan_name' => 'Premium ' . $plan->name,
-            'plan_days' => $plan->days,
-            'method' => 'QRIS',
-            'base_price' => $plan->price,
-            'discount' => $q['discount'],
-            'amount' => $q['amount'],
-            'promo_id' => $q['promo']?->id,
-            'promo_label' => $q['label'],
-            'status' => 'pending',
-            'expires_at' => now()->addMinutes(self::EXPIRY_MINUTES),
-        ]);
-        $t->update(['code' => sprintf('TRX-%04d', $t->id)]);
+            $t = Transaction::create([
+                'code' => 'TMP-' . Str::random(12),
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'plan_name' => 'Premium ' . $plan->name,
+                'plan_days' => $plan->days,
+                'method' => 'QRIS',
+                'base_price' => $plan->price,
+                'discount' => $q['discount'],
+                'amount' => $q['amount'],
+                'promo_id' => $q['promo']?->id,
+                'promo_label' => $q['label'],
+                'status' => 'pending',
+                'expires_at' => now()->addMinutes(self::EXPIRY_MINUTES),
+            ]);
+
+            // Kode dari id; bila sudah terpakai (data lama), tambahkan akhiran acak agar tidak bentrok.
+            $code = sprintf('TRX-%04d', $t->id);
+            if (Transaction::where('code', $code)->where('id', '!=', $t->id)->exists()) {
+                $code .= '-' . strtoupper(Str::random(4));
+            }
+            $t->update(['code' => $code]);
+
+            return $t;
+        });
 
         return response()->json($t->toApi(), 201);
     }
@@ -88,10 +98,10 @@ class OrderController extends Controller
         return response()->json($t->toApi());
     }
 
-    /** SIMULASI webhook pembayaran QRIS. Dimatikan di production. */
+    /** SIMULASI webhook pembayaran QRIS. Hanya aktif jika services.gymku.simulate_pay (local/testing atau GYMKU_SIMULATE_PAY=true). */
     public function simulatePay(Request $r, string $code): JsonResponse
     {
-        abort_if(app()->environment('production'), 404);
+        abort_unless(config('services.gymku.simulate_pay'), 404);
 
         $this->mine($r, $code); // sekaligus menandai kedaluwarsa bila perlu
 

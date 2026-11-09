@@ -68,6 +68,29 @@ class Membership extends Model
             'is_active' => $this->isActive(),
             'is_frozen' => $frozen,
             'freeze_days_available' => max(0, self::MAX_FREEZE_DAYS - $this->freeze_days_used),
+            'freeze' => $this->freezeApi(),
+        ];
+    }
+
+    public function freezeDaysAvailable(): int
+    {
+        return max(0, self::MAX_FREEZE_DAYS - $this->freeze_days_used);
+    }
+
+    /** Pembekuan yang sedang berjalan atau terjadwal (null jika tidak ada). */
+    public function freezeApi(): ?array
+    {
+        $f = $this->currentFreeze();
+        if (!$f) return null;
+        $frozen = !today()->lt($f->starts_on);
+        return [
+            'starts_on' => $f->starts_on->toDateString(),
+            'ends_on' => $f->ends_on->toDateString(),
+            'days' => $f->length(),
+            'reason' => $f->reason,
+            'is_frozen' => $frozen,
+            'is_scheduled' => !$frozen,
+            'days_left' => $frozen ? max(0, (int) today()->diffInDays($f->ends_on, false) + 1) : 0,
         ];
     }
 }

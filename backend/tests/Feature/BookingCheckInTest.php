@@ -5,11 +5,13 @@ namespace Tests\Feature;
 use App\Models\BlockRecord;
 use App\Models\Booking;
 use App\Models\CheckIn;
+use App\Models\FaceTemplate;
 use App\Models\Freeze;
 use App\Models\GymClass;
 use App\Models\Membership;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -121,10 +123,14 @@ class BookingCheckInTest extends TestCase
     public function test_check_in_and_history(): void
     {
         $u = $this->member();
+        FaceTemplate::create(['user_id' => $u->id]);
         Sanctum::actingAs($u);
 
-        $this->postJson('/api/checkins')->assertCreated()->assertJsonPath('method', 'face');
-        $this->postJson('/api/checkins')->assertStatus(409); // baru saja check-in
+        $photo = fn () => UploadedFile::fake()->createWithContent('face.png', base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='));
+
+        $this->postJson('/api/checkins', ['photo' => $photo()])->assertCreated()->assertJsonPath('method', 'face');
+        $this->postJson('/api/checkins', ['photo' => $photo()])->assertStatus(409); // baru saja check-in
 
         $this->getJson('/api/checkins')->assertOk()
             ->assertJsonPath('visits_this_month', 1)->assertJsonPath('active_days_this_month', 1)

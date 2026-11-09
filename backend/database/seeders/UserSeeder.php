@@ -31,7 +31,7 @@ class UserSeeder extends Seeder
         Target::firstOrCreate(['user_id' => $naufal->id, 'name' => 'Target bulanan'],
             ['period' => 'monthly', 'count' => 16, 'days' => [], 'reminder' => false]);
         $plan = Plan::where('code', '6m')->first();
-        Transaction::firstOrCreate(['code' => 'TRX-0098'], [
+        Transaction::firstOrCreate(['code' => 'TRX-0001'], [
             'user_id' => $naufal->id, 'plan_id' => $plan->id, 'plan_name' => 'Premium 6 Bulan', 'plan_days' => 180,
             'method' => 'QRIS', 'base_price' => 1700000, 'discount' => 0, 'amount' => 1700000,
             'status' => 'paid', 'period_start' => today()->subDays(38), 'period_end' => today()->addDays(142),
