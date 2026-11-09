@@ -78,7 +78,7 @@ void main() {
     WidgetTester tester,
   ) async {
     final app = AppState();
-    expect(app.login('admin', 'admin123'), isNull);
+    expect(app.loginLocalForTest('admin', 'admin123'), isNull);
     await tester.pumpWidget(
       ChangeNotifierProvider(create: (_) => app, child: const GymkuApp()),
     );
@@ -98,7 +98,7 @@ void main() {
 
   test('freeze and unfreeze only change membership after admin approval', () {
     final app = AppState();
-    expect(app.login('Naufal Badu', 'Gymku123'), isNull);
+    expect(app.loginLocalForTest('Naufal Badu', 'Gymku123'), isNull);
     final member = app.currentUser!;
 
     expect(app.requestFreezeMembership(today(), 7, 'Bepergian'), isNull);
@@ -111,33 +111,33 @@ void main() {
     );
 
     app.logout();
-    expect(app.login('admin', 'admin123'), isNull);
+    expect(app.loginLocalForTest('admin', 'admin123'), isNull);
     expect(app.decideFreezeRequest(freezeRequest.id, true), isNull);
     expect(app.statusOf(member), MemberStatus.frozen);
 
     app.logout();
-    expect(app.login('Naufal Badu', 'Gymku123'), isNull);
+    expect(app.loginLocalForTest('Naufal Badu', 'Gymku123'), isNull);
     expect(app.requestUnfreezeMembership(), isNull);
     final unfreezeRequest = app.pendingFreezeRequest!;
     expect(unfreezeRequest.type, FreezeRequestType.unfreeze);
     expect(app.membership!.isFrozen, isTrue);
 
     app.logout();
-    expect(app.login('admin', 'admin123'), isNull);
+    expect(app.loginLocalForTest('admin', 'admin123'), isNull);
     expect(app.decideFreezeRequest(unfreezeRequest.id, true), isNull);
 
     app.logout();
-    expect(app.login('Naufal Badu', 'Gymku123'), isNull);
+    expect(app.loginLocalForTest('Naufal Badu', 'Gymku123'), isNull);
     expect(app.membership!.currentFreeze, isNull);
 
     expect(app.requestFreezeMembership(today(), 7, 'Urusan pribadi'), isNull);
     final rejectedRequest = app.pendingFreezeRequest!;
     app.logout();
-    expect(app.login('admin', 'admin123'), isNull);
+    expect(app.loginLocalForTest('admin', 'admin123'), isNull);
     expect(app.decideFreezeRequest(rejectedRequest.id, false), isNull);
 
     app.logout();
-    expect(app.login('Naufal Badu', 'Gymku123'), isNull);
+    expect(app.loginLocalForTest('Naufal Badu', 'Gymku123'), isNull);
     expect(app.membership!.currentFreeze, isNull);
     expect(rejectedRequest.status, 'Ditolak');
   });

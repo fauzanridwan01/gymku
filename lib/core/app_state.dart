@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import 'api_client.dart';
 import 'models.dart';
 
 /// Semua logika bisnis + data sementara (in-memory).
@@ -12,6 +14,9 @@ class AppState extends ChangeNotifier {
   AppState() {
     _seed();
   }
+
+  /// Klien API Laravel (menyimpan token login).
+  final ApiClient api = ApiClient();
 
   // ---------------------------------------------------------------- data
   final List<AppUser> _users = [];
@@ -215,10 +220,68 @@ class AppState extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------- auth
-  // API: POST /auth/login
-  String? login(String nameOrEmail, String password) {
-    final key = nameOrEmail.trim().toLowerCase();
+  /// Dipanggil saat aplikasi dibuka: pulihkan sesi dari token yang tersimpan.
+  Future<void> restoreSession() async {
+    await api.loadToken();
+    if (!api.hasToken) return;
+    try {
+      final res = await api.get('/me');
+      currentUser = _userFromApi(res['user'] as Map<String, dynamic>);
+      notifyListeners();
+    } on ApiException catch (e) {
+      // Token ditolak/akun diblokir -> hapus. Server mati -> token dibiarkan.
+      if (e.isUnauthorized || e.status == 403) await api.setToken(null);
+    } catch (_) {
+      await api.setToken(null);
+    }
+  }
+
+  /// API: POST /auth/login. Mengembalikan pesan error, atau null jika berhasil.
+  Future<String?> login(String nameOrEmail, String password) async {
+    final key = nameOrEmail.trim();
     if (key.isEmpty || password.isEmpty) return 'Nama dan password wajib diisi';
+    try {
+      final res = await api.post('/auth/login', {
+        'login': key,
+        'password': password,
+      });
+      return await _startSession(res);
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  /// API: POST /auth/register. Mengembalikan pesan error, atau null jika berhasil.
+  Future<String?> register(
+    String name,
+    String email,
+    String password,
+    String confirm,
+  ) async {
+    if (name.trim().isEmpty) return 'Nama wajib diisi';
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email.trim())) {
+      return 'Format email tidak valid';
+    }
+    final pwErr = validatePassword(password);
+    if (pwErr != null) return pwErr;
+    if (password != confirm) return 'Konfirmasi password tidak sama';
+    try {
+      final res = await api.post('/auth/register', {
+        'name': name.trim(),
+        'email': email.trim(),
+        'password': password,
+        'password_confirmation': confirm,
+      });
+      return await _startSession(res);
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  /// Hanya untuk tes: masuk dengan data contoh lokal, tanpa server.
+  @visibleForTesting
+  String? loginLocalForTest(String nameOrEmail, String password) {
+    final key = nameOrEmail.trim().toLowerCase();
     final u = _users.where(
       (e) => e.name.toLowerCase() == key || e.email.toLowerCase() == key,
     );
@@ -230,39 +293,44 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
-  // API: POST /auth/register
-  String? register(String name, String email, String password, String confirm) {
-    if (name.trim().isEmpty) return 'Nama wajib diisi';
-    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email.trim())) {
-      return 'Format email tidak valid';
+  /// Simpan token dari balasan login/register lalu tandai pengguna masuk.
+  Future<String?> _startSession(Map<String, dynamic> res) async {
+    final token = res['token'];
+    final user = res['user'];
+    if (token is! String || user is! Map<String, dynamic>) {
+      return 'Balasan server tidak dikenali';
     }
-    final pwErr = validatePassword(password);
-    if (pwErr != null) return pwErr;
-    if (password != confirm) return 'Konfirmasi password tidak sama';
-    final exists = _users.any(
-      (u) =>
-          u.email.toLowerCase() == email.trim().toLowerCase() ||
-          u.name.toLowerCase() == name.trim().toLowerCase(),
-    );
-    if (exists) return 'Nama atau email sudah terdaftar';
-    final n = 2300 + _users.length;
-    final user = AppUser(
-      id: 'u${_users.length + 1}',
-      name: name.trim(),
-      email: email.trim(),
-      password: password,
-      memberId: 'GYM-00$n',
-    );
-    _users.add(user);
-    currentUser = user;
+    await api.setToken(token);
+    currentUser = _userFromApi(user);
+    pending = null;
     notifyListeners();
     return null;
   }
 
   void logout() {
+    // Permintaan keluar ke server berjalan di latar; layar langsung kembali.
+    unawaited(api.logout());
     currentUser = null;
     pending = null;
     notifyListeners();
+  }
+
+  /// Ubah JSON pengguna dari API menjadi [AppUser].
+  AppUser _userFromApi(Map<String, dynamic> j) {
+    String str(String k) => (j[k] as String?) ?? '';
+    return AppUser(
+      id: '${j['id']}',
+      name: str('name'),
+      email: str('email'),
+      password: '', // password tidak pernah dikirim server
+      memberId: str('member_code'),
+      phone: str('phone'),
+      gender: str('gender'),
+      birthDate: DateTime.tryParse(str('birth_date')),
+      role: j['role'] == 'admin' ? Role.admin : Role.member,
+      joinedAt: DateTime.tryParse(str('joined_at')),
+      blocked: j['is_blocked'] == true,
+    )..faceEnrolled = j['has_face'] == true;
   }
 
   /// Aturan password sesuai layar "Ganti Password".
